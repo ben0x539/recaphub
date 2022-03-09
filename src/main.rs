@@ -29,16 +29,28 @@ async fn main() -> eyre::Result<()> {
     while let Some(issue) = timeframe.next_issue().await {
         let issue = issue?;
         let comments = timeframe.comments_within(&issue).await?;
-        if comments.is_empty() {
+
+        let we_recently_commented = !comments.is_empty();
+        let we_recently_submitted = issue.user.login == timeframe.name && issue.created_at >= timeframe.cutoff;
+
+        if !we_recently_commented && !we_recently_submitted {
             continue;
         }
 
         let title = &issue.title;
         let repo = issue.repo();
         let owner = issue.owner();
+
         println!("- {owner}/{repo}: {title}");
-        for comment in comments {
+        for comment in &comments {
             println!("  - {comment}");
+        }
+
+        if comments.is_empty() {
+            // we didn't print any comments so let's print the issue
+            // url itself so we have something to click on.
+            let url = issue.html_url;
+            println!("  - {url}");
         }
     }
 
